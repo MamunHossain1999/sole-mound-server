@@ -7,7 +7,7 @@ import { forgotPasswordSchema, loginSchema, registerSchema, resendOtpSchema, res
 const router = Router();
 
 // Auth routes
-router.post("/register", validate(registerSchema), authController.register);
+router.post("/signup", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
 router.post("/logout", authController.logout);
 

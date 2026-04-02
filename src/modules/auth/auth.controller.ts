@@ -101,3 +101,27 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+// verify user profile
+export const verifyToken = async (req: Request, res: Response) => {
+  try {
+    await connectDB();
+
+    const token = req.body.token || req.cookies.token;
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: "No token" });
+    }
+
+    const user = await authService.verifyUserToken(token);
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (err: any) {
+    return res.status(401).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
