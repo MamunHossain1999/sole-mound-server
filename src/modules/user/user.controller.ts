@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import connectDB from "../../config/db";
 import * as authService from "../auth/auth.service";
 import { User } from "./user.model";
-import { aw } from "react-router/dist/development/register-COAKzST_";
+
 
 export const updateProfile = async (req: Request, res: Response) => {
   try {
