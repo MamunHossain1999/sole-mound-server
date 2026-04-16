@@ -5,11 +5,11 @@ import { authorize } from "../../middlewares/role.middleware";
 
 const router = Router();
 
-router.post("/history", protect, authorize("user","seller", "admin"), addToHistory);
-router.get("/history", protect, authorize("user","seller", "admin"), getHistory);
-router.delete("/history/delete/:id", protect, authorize("user","seller","admin"), deleteHistoryItem);
+router.post("/history", protect, authorize("customer","seller", "admin"), addToHistory);
+router.get("/history", protect, authorize("customer","seller", "admin"), getHistory);
+router.delete("/history/delete/:id", protect, authorize("customer","seller","admin"), deleteHistoryItem);
 
-router.delete("/history/all-delete", protect, authorize("user","seller","admin"), clearHistory);
+router.delete("/history/all-delete", protect, authorize("customer","seller","admin"), clearHistory);
 
 const historyRoutes = router;
 export default historyRoutes;
