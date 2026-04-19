@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { Order } from "./order.model";
 import mongoose from "mongoose";
 
-
 interface AuthRequest extends Request {
   user?: {
     id: string;
@@ -10,15 +9,13 @@ interface AuthRequest extends Request {
     role?: string;
   };
 }
+
 /* =========================
    CREATE ORDER
 ========================= */
 export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
-    console.log("📩 Incoming Order Body:", req.body);
-
-    const userId = req.user?.id; // ✅ FIXED
-
+    const userId = req.user?.id;
     const { products, totalAmount, shippingAddress } = req.body;
 
     if (!userId) {
@@ -49,6 +46,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       shippingAddress,
       status: "pending",
       paymentStatus: "unpaid",
+      returnStatus: "none",
     });
 
     return res.status(201).json({
@@ -56,20 +54,28 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       data: order,
     });
   } catch (error: any) {
-    console.error("🔥 Create Order Error:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
+
 /* =========================
-   GET ALL ORDERS
+   GET ALL ORDERS (ONLY USER)
 ========================= */
-export const getAllOrders = async (req: Request, res: Response) => {
+export const getAllOrders = async (req: AuthRequest, res: Response) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -84,34 +90,37 @@ export const getAllOrders = async (req: Request, res: Response) => {
 };
 
 /* =========================
-   GET SINGLE ORDER
+   GET SINGLE ORDER (SECURE)
 ========================= */
-
-export const getOrderById = async (req: Request, res: Response) => {
+export const getOrderById = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const userId = req.user?.id;
 
-    console.log("📦 GET ORDER ID:", id);
+    // ✅ fix id properly
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
-    // ✅ 1. Check id exists
-    if (!id) {
-      return res.status(400).json({
+    // 🔐 auth check
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "Order ID is required",
+        message: "Unauthorized",
       });
     }
 
-    // ✅ 2. Validate MongoDB ObjectId
-    const idString = Array.isArray(id) ? id[0] : id;
-    if (!mongoose.Types.ObjectId.isValid(idString)) {
+    // 🛑 id validation
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
         message: "Invalid Order ID",
       });
     }
 
-    // ✅ 3. Find Order
-    const order = await Order.findById(idString);
+    // 🔐 secure query (user-specific)
+    const order = await Order.findOne({
+      _id: id,
+      userId,
+    });
 
     if (!order) {
       return res.status(404).json({
@@ -120,13 +129,10 @@ export const getOrderById = async (req: Request, res: Response) => {
       });
     }
 
-    console.log("✅ ORDER FOUND:", order._id);
-
     return res.status(200).json({
       success: true,
       data: order,
     });
-
   } catch (error: any) {
     console.error("🔥 GET ORDER ERROR:", error);
 
@@ -138,10 +144,11 @@ export const getOrderById = async (req: Request, res: Response) => {
 };
 
 /* =========================
-   UPDATE ORDER STATUS
+   UPDATE ORDER STATUS (SECURE)
 ========================= */
-export const updateOrderStatus = async (req: Request, res: Response) => {
+export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user?.id;
     const { status } = req.body;
 
     const validStatuses = [
@@ -151,6 +158,13 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       "cancelled",
     ];
 
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -158,8 +172,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, userId }, // 🔥 SECURITY
       { status },
       { new: true }
     );
@@ -173,7 +187,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: "Order updated successfully",
+      message: "Order updated",
       data: order,
     });
   } catch (error: any) {
@@ -185,18 +199,25 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 };
 
 /* =========================
-   UPDATE PAYMENT STATUS (IMPORTANT FOR STRIPE)
+   UPDATE PAYMENT STATUS (SECURE)
 ========================= */
-export const updatePaymentStatus = async (req: Request, res: Response) => {
+export const updatePaymentStatus = async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user?.id;
     const { paymentStatus, transactionId } = req.body;
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, userId }, // 🔥 SECURITY
       {
         paymentStatus,
         transactionId,
-
         status:
           paymentStatus === "paid"
             ? "processing"
@@ -228,11 +249,23 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
 };
 
 /* =========================
-   DELETE ORDER
+   DELETE ORDER (SECURE)
 ========================= */
-export const deleteOrder = async (req: Request, res: Response) => {
+export const deleteOrder = async (req: AuthRequest, res: Response) => {
   try {
-    const order = await Order.findByIdAndDelete(req.params.id);
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await Order.findOneAndDelete({
+      _id: req.params.id,
+      userId, // 🔥 SECURITY
+    });
 
     if (!order) {
       return res.status(404).json({
@@ -243,7 +276,64 @@ export const deleteOrder = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: "Order deleted successfully",
+      message: "Order deleted",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/* =========================
+   RETURN ORDER (SECURE)
+========================= */
+export const requestReturnOrder = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+    const { returnId } = req.params;
+    const { reason } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const order = await Order.findOne({
+      _id: returnId,
+      userId, // 🔥 SECURITY
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.returnStatus !== "none") {
+      return res.status(400).json({
+        success: false,
+        message: "Return already requested",
+      });
+    }
+
+    order.returnStatus = "requested";
+    order.returnReason = reason;
+    order.returnRequestedAt = new Date();
+
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Return requested",
+      data: order,
     });
   } catch (error: any) {
     return res.status(500).json({

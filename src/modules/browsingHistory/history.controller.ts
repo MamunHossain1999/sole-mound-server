@@ -4,7 +4,7 @@ import { History } from "./history.model";
 /* =========================
    🔥 Add to History (UPSERT)
 ========================= */
-export const addToHistory = async (req: any, res: Response) => {
+export const addToHistory = async (req: Request, res: Response) => {
   try {
     const { productId } = req.body;
 
@@ -42,7 +42,7 @@ export const addToHistory = async (req: any, res: Response) => {
 /* =========================
    🔥 Get History
 ========================= */
-export const getHistory = async (req: any, res: Response) => {
+export const getHistory = async (req: Request, res: Response) => {
   try {
     const history = await History.find({ user: req.user.id })
       .populate("product", "name images price")
@@ -64,7 +64,7 @@ export const getHistory = async (req: any, res: Response) => {
 /* =========================
    🔥 Delete Single Item
 ========================= */
-export const deleteHistoryItem = async (req: any, res: Response) => {
+export const deleteHistoryItem = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -95,7 +95,7 @@ export const deleteHistoryItem = async (req: any, res: Response) => {
 /* =========================
    🔥 Clear All History
 ========================= */
-export const clearHistory = async (req: any, res: Response) => {
+export const clearHistory = async (req: Request, res: Response) => {
   try {
     await History.deleteMany({ user: req.user.id });
 

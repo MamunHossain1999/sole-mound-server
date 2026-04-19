@@ -6,6 +6,7 @@ import {
   updateOrderStatus,
   updatePaymentStatus,
   deleteOrder,
+  requestReturnOrder,
 } from "./order.controller";
 
 import { protect } from "../../middlewares/auth.middleware";
@@ -16,7 +17,7 @@ const router = Router();
 /* =========================
    CREATE ORDER (USER ONLY)
 ========================= */
-router.post("/order", protect, authorize("user","seller", "admin"), createOrder);
+router.post("/order", protect, authorize("customer","seller", "admin"), createOrder);
 
 /* =========================
    GET ALL ORDERS
@@ -54,5 +55,8 @@ router.patch(
    DELETE ORDER
 ========================= */
 router.delete("/order/:id", protect, authorize("admin"), deleteOrder);
+
+// return router;
+router.post("/order/:returnId/return", protect, authorize("customer","seller"), requestReturnOrder);
 const orderRoutes = router;
 export default orderRoutes;

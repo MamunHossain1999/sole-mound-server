@@ -46,6 +46,9 @@ export interface IOrder {
 
   shippingAddress: IShippingAddress;
   billingAddress?: IBillingAddress;
+  returnStatus?: "none" | "requested" | "approved" | "rejected" | "returned";
+  returnReason?: string;
+  returnRequestedAt?: Date | null;
 
   transactionId?: string | null;
 

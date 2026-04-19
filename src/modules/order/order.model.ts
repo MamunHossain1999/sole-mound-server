@@ -36,11 +36,12 @@ const orderProductSchema = new Schema(
 );
 
 /* =========================
-   ADDRESS BASE SCHEMA
+   ADDRESS SCHEMA
 ========================= */
 const addressSchema = new Schema(
   {
     fullName: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true, lowercase: true },
     phone: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
 
@@ -52,7 +53,7 @@ const addressSchema = new Schema(
 );
 
 /* =========================
-   ORDER SCHEMA
+   ORDER SCHEMA (FINAL FIXED)
 ========================= */
 const orderSchema = new Schema<IOrder>(
   {
@@ -109,6 +110,25 @@ const orderSchema = new Schema<IOrder>(
     billingAddress: {
       type: addressSchema,
       required: false,
+    },
+
+    /* =========================
+       RETURN SYSTEM
+    ========================= */
+    returnStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected", "returned"],
+      default: "none",
+    },
+
+    returnReason: {
+      type: String,
+      default: "",
+    },
+
+    returnRequestedAt: {
+      type: Date,
+      default: null,
     },
   },
   {
