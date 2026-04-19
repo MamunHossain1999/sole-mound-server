@@ -1,14 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-
-export interface ICartItem {
-  product: mongoose.Types.ObjectId;
-  quantity: number;
-}
-
-export interface ICart {
-  user: mongoose.Types.ObjectId;
-  items: ICartItem[];
-}
+import { ICart, ICartItem } from "./cart.interface";
 
 const cartItemSchema = new Schema<ICartItem>(
   {
@@ -23,8 +14,12 @@ const cartItemSchema = new Schema<ICartItem>(
       default: 1,
       min: 1,
     },
+    discount: {
+      type: Number,
+      default: 0, // ✅ better
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const cartSchema = new Schema<ICart>(
@@ -33,14 +28,14 @@ const cartSchema = new Schema<ICart>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // 🔥 IMPORTANT (1 cart per user)
+      unique: true, // 🔥 1 cart per user
     },
     items: {
       type: [cartItemSchema],
       default: [],
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Cart = mongoose.model<ICart>("Cart", cartSchema);
