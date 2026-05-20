@@ -4,23 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
+const app_1 = __importDefault(require("./app"));
 const db_1 = __importDefault(require("./config/db"));
 dotenv_1.default.config();
-const PORT = process.env.PORT || 5000;
-const startServer = async () => {
-    try {
-        await (0, db_1.default)();
-        // 🔥 HTTP server create
-        // const server = http.createServer(app);
-        // 🔥 Socket initialize
-        // initializeSocket(server);
-        // 🔥 Start server
-        // server.listen(PORT, () =>
-        //   console.log(`Server running on port ${PORT} 🚀`)
-        // );
-    }
-    catch (error) {
-        console.log("Failed to start server:", error);
-    }
-};
-startServer();
+(0, db_1.default)();
+exports.default = app_1.default;
