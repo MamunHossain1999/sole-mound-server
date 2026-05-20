@@ -16,6 +16,7 @@ export interface IShippingAddress {
   postalCode?: string;
   country?: string;
 }
+
 export interface IBillingAddress {
   fullName: string;
   phone: string;
@@ -25,16 +26,18 @@ export interface IBillingAddress {
   country?: string;
 }
 
-export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";
+export type OrderStatus = "pending" | "processing" | "on_the_way" | "pickup" | "completed" | "cancelled";
 
 export type PaymentStatus = "unpaid" | "paid" | "failed";
 
 export type PaymentMethod = "stripe" | "sslcommerz" | "cash";
 
+export type ShippingMethod = "standard" | "express" | "pickup";
+
 export interface IOrder {
   _id?: string;
 
-  userId: Types.ObjectId | string; // ✅ FIX
+  userId: Types.ObjectId | string;
 
   products: IOrderProduct[];
 
@@ -46,6 +49,9 @@ export interface IOrder {
 
   shippingAddress: IShippingAddress;
   billingAddress?: IBillingAddress;
+
+  shippingMethod?: ShippingMethod; // ✅ ADDED
+
   returnStatus?: "none" | "requested" | "approved" | "rejected" | "returned";
   returnReason?: string;
   returnRequestedAt?: Date | null;
@@ -54,6 +60,8 @@ export interface IOrder {
 
   paymentMethod?: PaymentMethod;
 
-  createdAt?: string; // ✅ better for frontend
-  updatedAt?: string; // ✅ better for frontend
+  comment?: string;
+
+  createdAt?: string;
+  updatedAt?: string;
 }

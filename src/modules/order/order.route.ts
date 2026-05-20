@@ -7,10 +7,13 @@ import {
   updatePaymentStatus,
   deleteOrder,
   requestReturnOrder,
+  updateOrderComment,
 } from "./order.controller";
 
 import { protect } from "../../middlewares/auth.middleware";
 import { authorize } from "../../middlewares/role.middleware";
+import { downloadInvoice } from "./invoice.controller";
+
 
 const router = Router();
 
@@ -51,10 +54,16 @@ router.patch(
   updatePaymentStatus,
 );
 
+// invoice route
+router.get("/invoice/:id", protect, authorize("customer","seller","admin"), downloadInvoice );
+
+// order comment
+router.patch("/orders/:id/comment",protect, authorize("customer","seller","admin"), updateOrderComment);
+
 /* =========================
    DELETE ORDER
 ========================= */
-router.delete("/order/:id", protect, authorize("admin"), deleteOrder);
+router.delete("/order/:id", protect, authorize("seller","admin"), deleteOrder);
 
 // return router;
 router.post("/order/:returnId/return", protect, authorize("customer","seller"), requestReturnOrder);

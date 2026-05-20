@@ -1,8 +1,14 @@
 import { Types } from "mongoose";
 
 export interface IProduct {
+  // ========================
+  // BASIC INFO
+  // ========================
   name: string;
-  category?: string;
+  category: string;
+
+  categoryStatus?: "active" | "inactive"; // ✅ ADD THIS
+
   tags?: string[];
   description?: string;
 
@@ -11,19 +17,54 @@ export interface IProduct {
   images?: string[];
   video?: string;
 
+  // ========================
+  // PRICE INFO
+  // ========================
   price: number;
   discount?: number;
   tax?: boolean;
 
+  isBestSeller: boolean;
+
+  // ========================
+  // DEAL SYSTEM
+  // ========================
+  dealType?: "weekly" | "today" | "none";
+
+  label: "hot" | "new" | "sale" | "sold out" | "none";
+
+  startDate?: Date | null;
+  endDate?: Date | null;
+
+  brand?: string;
+
+  // ========================
+  // INVENTORY
+  // ========================
   sku?: string;
   barcode?: string;
   quantity?: number;
 
+  // ========================
+  // VARIANTS
+  // ========================
   variants?: {
     option: string;
     values: string[];
   }[];
 
+  // ========================
+  // ANALYTICS
+  // ========================
+  views: number;
+  salesCount: number;
+  wishlistCount: number;
+
+  trendingScore?: number;
+
+  // ========================
+  // SHIPPING
+  // ========================
   shipping?: {
     isDigital: boolean;
     weight?: number;
@@ -31,7 +72,20 @@ export interface IProduct {
     length?: number;
   };
 
-  // 🔥 FIX HERE
+  // ========================
+  // RELATIONS
+  // ========================
   sellerId: Types.ObjectId;
-}
 
+  // ========================
+  // RATINGS
+  // ========================
+  ratingsAverage?: number;
+  ratingsCount?: number;
+
+  // ========================
+  // TIMESTAMPS
+  // ========================
+  createdAt?: Date;
+  updatedAt?: Date;
+}

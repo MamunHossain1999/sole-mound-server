@@ -15,7 +15,6 @@ import {
 import cloudinary from "../../config/cloudinary";
 import { protect } from "../../middlewares/auth.middleware";
 import { authorize } from "../../middlewares/role.middleware";
-import { get } from "node:http";
 
 const router = express.Router();
 
@@ -39,27 +38,46 @@ router.post(
   protect, // 🔥 FIRST
   authorize("seller", "admin"), // 🔥 SECOND
   upload.array("photos"), // 🔥 LAST
-  createProduct
+  createProduct,
 );
 
 // 🔥 GET ALL PRODUCTS
-router.get("/all/products",protect, authorize("customer", "seller", "admin"), getProducts);
-router.get("/product/:id", protect, authorize("customer", "seller", "admin"),getSingleProduct);
+router.get(
+  "/all/products",
+
+  getProducts,
+);
+router.get(
+  "/product/:id",
+  protect,
+  authorize("customer", "seller", "admin"),
+  getSingleProduct,
+);
 // 🔥 APPROVE / REJECT
-router.patch("/product/:id/approve",protect, authorize("admin"), approveProduct);
+router.patch(
+  "/product/:id/approve",
+  protect,
+  authorize("admin"),
+  approveProduct,
+);
 router.patch("/product/:id/reject", protect, authorize("admin"), rejectProduct);
 
 // 🔥 UPDATE PRODUCT (Partial + Image)
 router.patch(
-  "/product/:id",
+  "/product/update/:id",
   upload.array("photos"),
   protect,
   authorize("seller", "admin"),
-  updateProduct
+  updateProduct,
 );
 
 // 🔥 DELETE PRODUCT
-router.delete("/product/delete/:id", protect, authorize("seller", "admin"), deleteProduct);
+router.delete(
+  "/product/delete/:id",
+  protect,
+  authorize("seller", "admin"),
+  deleteProduct,
+);
 
 const productRoutes = router;
 export default productRoutes;

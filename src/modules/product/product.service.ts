@@ -41,12 +41,14 @@ export const deleteProductService = async (id: string) => {
 };
 
 // UPDATE (PARTIAL)
-export const updateProductService = async (
-  id: string,
-  data: any
-) => {
-  return await Product.findByIdAndUpdate(id, data, {
-    new: true,
-    runValidators: true,
-  });
+export const updateProductService = async (id: string, data: any) => {
+  return await Product.findByIdAndUpdate(
+    id,
+    { $set: data },
+    {
+      new: true,
+      runValidators: true,
+      returnDocument: "after",
+    }
+  );
 };

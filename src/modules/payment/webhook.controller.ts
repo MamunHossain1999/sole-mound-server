@@ -1,13 +1,12 @@
 import Stripe from "stripe";
 import { Order } from "../order/order.model";
 
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 export const stripeWebhook = async (req: any, res: any) => {
   const sig = req.headers["stripe-signature"];
 
-  let event;
+  let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(
@@ -19,25 +18,25 @@ export const stripeWebhook = async (req: any, res: any) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // ✅ Payment success event
+  // ================= PAYMENT SUCCESS =================
   if (event.type === "checkout.session.completed") {
     const session: any = event.data.object;
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(
-      session.payment_intent
-    );
-
-    const paymentMethod = await stripe.paymentMethods.retrieve(
-      paymentIntent.payment_method as string
-    );
-
     const orderId = session.metadata?.orderId;
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID missing in metadata",
+      });
+    }
 
     await Order.findByIdAndUpdate(orderId, {
       paymentStatus: "paid",
-      transactionId: paymentIntent.id,
+      status: "payment",
+      transactionId: session.payment_intent,
     });
   }
 
-  res.json({ received: true });
+  return res.json({ received: true });
 };

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Order } from "./order.model";
 import mongoose from "mongoose";
+import { Product } from "../product/product.model";
 
 interface AuthRequest extends Request {
   user?: {
@@ -15,9 +16,13 @@ interface AuthRequest extends Request {
 ========================= */
 export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    const { products, totalAmount, shippingAddress } = req.body;
+    console.log("🔥 CREATE ORDER HIT");
 
+    const userId = req.user?.id;
+    const { products, totalAmount, shippingAddress, shippingMethod } =
+      req.body;
+
+    // ================= VALIDATION =================
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -25,38 +30,92 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!products || !Array.isArray(products) || products.length === 0) {
+    if (!products?.length || !Array.isArray(products)) {
       return res.status(400).json({
         success: false,
         message: "Products required",
       });
     }
 
-    if (!totalAmount || totalAmount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid total amount",
+    // ================= FETCH PRODUCTS ONCE (IMPORTANT FIX) =================
+    const productIds = products.map((p: any) => p.productId);
+
+    const dbProducts = await Product.find({
+      _id: { $in: productIds },
+    });
+
+    const productMap = new Map();
+    dbProducts.forEach((p) => {
+      productMap.set(p._id.toString(), p);
+    });
+
+    const formattedProducts: any[] = [];
+
+    // ================= STOCK CHECK + FORMAT =================
+    for (const item of products) {
+      const product = productMap.get(item.productId.toString());
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `Product not found: ${item.productId}`,
+        });
+      }
+
+      const currentQty = product.quantity ?? 0;
+
+      console.log(
+        `📦 Stock check: ${product.name} | DB: ${currentQty} | Order: ${item.quantity}`,
+      );
+
+      if (currentQty < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Out of stock for ${product.name}`,
+        });
+      }
+
+      // reduce stock
+      product.quantity = currentQty - item.quantity;
+
+      // format product (ONLY DB DATA → NO fallback bug)
+      formattedProducts.push({
+        productId: product._id,
+        name: product.name,
+        image: product.images?.[0] || "",
+        price: product.price,
+        quantity: item.quantity,
+        sku: product.sku || "",
       });
     }
 
+    // ================= SAVE STOCK ONCE (OPTIMIZED) =================
+    await Promise.all(dbProducts.map((p) => p.save()));
+
+    // ================= CREATE ORDER =================
     const order = await Order.create({
       userId,
-      products,
+      products: formattedProducts,
       totalAmount,
       shippingAddress,
+      shippingMethod,
       status: "pending",
       paymentStatus: "unpaid",
       returnStatus: "none",
     });
+
+    console.log("🎉 ORDER CREATED:", order._id);
 
     return res.status(201).json({
       success: true,
       data: order,
     });
   } catch (error: any) {
+    console.error("🔥 ORDER ERROR:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Internal Server Error",
     });
   }
 };
@@ -75,11 +134,28 @@ export const getAllOrders = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+    // query থেকে page + limit নাও
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    // total count (pagination এর জন্য দরকার)
+    const total = await Order.countDocuments({ userId });
+
+    const orders = await Order.find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     return res.status(200).json({
       success: true,
       data: orders,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -143,40 +219,20 @@ export const getOrderById = async (req: AuthRequest, res: Response) => {
   }
 };
 
-/* =========================
-   UPDATE ORDER STATUS (SECURE)
-========================= */
-export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
+// update order comment
+export const updateOrderComment = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    const { status } = req.body;
+    const { id } = req.params;
+    const { comment } = req.body;
 
-    const validStatuses = [
-      "pending",
-      "processing",
-      "completed",
-      "cancelled",
-    ];
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    if (!validStatuses.includes(status)) {
+    if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Invalid status",
+        message: "Order id required",
       });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, userId }, // 🔥 SECURITY
-      { status },
-      { new: true }
-    );
+    const order = await Order.findById(id);
 
     if (!order) {
       return res.status(404).json({
@@ -185,9 +241,12 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    order.comment = comment;
+    await order.save();
+
     return res.status(200).json({
       success: true,
-      message: "Order updated",
+      message: "Comment updated successfully",
       data: order,
     });
   } catch (error: any) {
@@ -198,6 +257,112 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/* =========================
+   UPDATE ORDER STATUS (SECURE)
+========================= */
+export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    const rawId = req.params.id;
+    const orderId = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    const { status } = req.body;
+
+    const validStatuses = [
+      "pending",
+      "payment",
+      "processing",
+      "on_the_way",
+      "pickup",
+      "completed",
+      "cancelled",
+    ] as const;
+
+    type OrderStatus = (typeof validStatuses)[number];
+
+    // ================= AUTH CHECK =================
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // ================= ID CHECK =================
+    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID",
+      });
+    }
+
+    // ================= STATUS CHECK =================
+    if (!status || !validStatuses.includes(status as OrderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    // ================= GET ORDER =================
+    const existingOrder = await Order.findOne({
+      _id: orderId,
+      userId,
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // ================= BUSINESS RULE =================
+    if (existingOrder.status === "processing" && status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "Processing order cannot be cancelled",
+      });
+    }
+
+    if (existingOrder.status === "completed" && status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "Completed order cannot be cancelled",
+      });
+    }
+
+    // ================= STOCK RESTORE (🔥 IMPORTANT) =================
+    if (status === "cancelled" && existingOrder.status !== "cancelled") {
+      for (const item of existingOrder.products) {
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { quantity: item.quantity },
+        });
+      }
+    }
+
+    // ================= UPDATE ORDER =================
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: orderId, userId },
+      { status },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      data: updatedOrder,
+    });
+  } catch (error: any) {
+    console.error("🔥 UPDATE ORDER STATUS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 /* =========================
    UPDATE PAYMENT STATUS (SECURE)
 ========================= */
@@ -222,10 +387,10 @@ export const updatePaymentStatus = async (req: AuthRequest, res: Response) => {
           paymentStatus === "paid"
             ? "processing"
             : paymentStatus === "failed"
-            ? "cancelled"
-            : "pending",
+              ? "cancelled"
+              : "pending",
       },
-      { new: true }
+      { new: true },
     );
 
     if (!order) {
@@ -289,10 +454,7 @@ export const deleteOrder = async (req: AuthRequest, res: Response) => {
 /* =========================
    RETURN ORDER (SECURE)
 ========================= */
-export const requestReturnOrder = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const requestReturnOrder = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { returnId } = req.params;

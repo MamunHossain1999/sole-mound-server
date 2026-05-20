@@ -44,6 +44,9 @@ router.put(
 router.get("/user/profile", protect, userController.getProfile);
 router.get("/all/users/profile", protect, userController.getUsers);
 
+// 👉 get single user by id
+router.get("/users/:id", protect, userController.getUserById);
+
 // Admin actions
 router.put("/user/:id/role", protect, userController.updateUserRole);
 router.delete("/user/:id", protect, userController.deleteUser);

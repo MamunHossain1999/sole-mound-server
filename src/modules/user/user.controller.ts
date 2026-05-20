@@ -46,6 +46,36 @@ export const getUsers = async (req: Request, res: Response) => {
   }
 };
 
+// profile details
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    await connectDB();
+
+    const id = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const user = await authService.getUserById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // ----------------------
 // Update User Role
 // ----------------------

@@ -31,8 +31,13 @@ const orderProductSchema = new Schema(
       type: String,
       default: "",
     },
+
+    sku: {
+      type: String,
+      default: "",
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -49,7 +54,7 @@ const addressSchema = new Schema(
     postalCode: { type: String, default: "" },
     country: { type: String, default: "Bangladesh" },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /* =========================
@@ -102,6 +107,11 @@ const orderSchema = new Schema<IOrder>(
       default: null,
     },
 
+    comment: {
+      type: String,
+      default: "",
+    },
+
     shippingAddress: {
       type: addressSchema,
       required: true,
@@ -111,7 +121,11 @@ const orderSchema = new Schema<IOrder>(
       type: addressSchema,
       required: false,
     },
-
+    shippingMethod: {
+      type: String,
+      enum: ["standard", "express", "pickup"],
+      default: "standard",
+    },
     /* =========================
        RETURN SYSTEM
     ========================= */
@@ -134,10 +148,7 @@ const orderSchema = new Schema<IOrder>(
   {
     timestamps: true,
     versionKey: false,
-  }
+  },
 );
 
-export const Order = mongoose.model<IOrder, OrderModel>(
-  "Order",
-  orderSchema
-);
+export const Order = mongoose.model<IOrder, OrderModel>("Order", orderSchema);
