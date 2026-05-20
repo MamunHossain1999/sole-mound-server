@@ -37,7 +37,6 @@ app.use((0, cors_1.default)({
         "http://localhost:5174",
         "https://solo-mound.vercel.app",
         "http://localhost:5173",
-        "http://localhost:5175",
         "https://sole-mound-seller.vercel.app",
     ],
     credentials: true,
