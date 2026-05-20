@@ -4,16 +4,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
-let isConnected = false;
 const connectDB = async () => {
-    if (isConnected) {
-        // Connection reuse
-        return;
-    }
     try {
-        const db = await mongoose_1.default.connect(process.env.MONGO_URI);
-        isConnected = db.connections[0].readyState === 1;
-        console.log("MongoDB connected");
+        if (mongoose_1.default.connection.readyState === 1) {
+            console.log("MongoDB already connected");
+            return;
+        }
+        await mongoose_1.default.connect(process.env.MONGO_URI);
+        console.log("MongoDB connected ✅");
     }
     catch (error) {
         console.log("MongoDB connection error:", error);
