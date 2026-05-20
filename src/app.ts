@@ -35,14 +35,13 @@ const app = express();
 app.use(
   cors({
     origin: [
-       "http://localhost:5174",
-       "https://solo-mound.vercel.app",
+      "http://localhost:5174",
+      "https://solo-mound.vercel.app",
       "http://localhost:5173",
-      "http://localhost:5175",
       "https://sole-mound-seller.vercel.app",
     ],
     credentials: true,
-  })
+  }),
 );
 /* =========================
    WEBHOOK (IMPORTANT)
@@ -50,9 +49,8 @@ app.use(
 app.use(
   "/api/webhook",
   express.raw({ type: "application/json" }),
-  stripeWebhook
+  stripeWebhook,
 );
-
 
 /* =========================
    BODY PARSERS
