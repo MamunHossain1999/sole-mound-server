@@ -39,6 +39,12 @@ exports.addToHistory = addToHistory;
 ========================= */
 const getHistory = async (req, res) => {
     try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized",
+            });
+        }
         const history = await history_model_1.History.find({ user: req.user.id })
             .populate("product", "name images price")
             .sort({ viewedAt: -1 })

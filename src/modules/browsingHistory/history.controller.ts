@@ -6,6 +6,13 @@ import { History } from "./history.model";
 ========================= */
 export const addToHistory = async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
     const { productId } = req.body;
 
     if (!productId) {
@@ -15,16 +22,18 @@ export const addToHistory = async (req: Request, res: Response) => {
       });
     }
 
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
+
     await History.updateOne(
-      { user: req.user.id, product: productId },
+      { user: userId, product: productId },
       {
         $set: { viewedAt: new Date() },
         $setOnInsert: {
-          user: req.user.id,
+          user: userId,
           product: productId,
         },
       },
-      { upsert: true }
+      { upsert: true },
     );
 
     return res.status(201).json({
@@ -47,11 +56,20 @@ export const getHistory = async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "Unauthorized - user not found",
       });
     }
 
-    const history = await History.find({ user: req.user.id })
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID missing in token",
+      });
+    }
+
+    const history = await History.find({ user: userId })
       .populate("product", "name images price")
       .sort({ viewedAt: -1 })
       .limit(10);
@@ -61,9 +79,11 @@ export const getHistory = async (req: Request, res: Response) => {
       data: history,
     });
   } catch (err: any) {
+    console.log("GET HISTORY ERROR:", err);
+
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: err.message || "Server error",
     });
   }
 };
@@ -73,11 +93,20 @@ export const getHistory = async (req: Request, res: Response) => {
 ========================= */
 export const deleteHistoryItem = async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
+
     const { id } = req.params;
 
     const deleted = await History.findOneAndDelete({
       _id: id,
-      user: req.user.id,
+      user: userId,
     });
 
     if (!deleted) {
@@ -104,7 +133,16 @@ export const deleteHistoryItem = async (req: Request, res: Response) => {
 ========================= */
 export const clearHistory = async (req: Request, res: Response) => {
   try {
-    await History.deleteMany({ user: req.user.id });
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const userId = (req.user as any)?.id || (req.user as any)?._id;
+
+    await History.deleteMany({ user: userId });
 
     return res.status(200).json({
       success: true,
